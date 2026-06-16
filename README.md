@@ -1,6 +1,6 @@
 # Voice Typist
 
-Voice Typist is a high-performance, cross-platform, real-time speech-to-text dictation application designed for Windows and Linux. Built with PyQt6 and Python, it features a premium dark-themed interface, a custom 60 FPS animated audio visualizer, a draggable focus-free floating overlay, and global auto-paste (Direct Dictation) capabilities that let you type with your voice into any application.
+Voice Typist is a high-performance, cross-platform, real-time speech-to-text dictation application designed for Windows and Linux (X11 only). Built with PyQt6 and Python, it features a premium dark-themed interface, a custom 60 FPS animated audio visualizer, a draggable focus-free floating overlay, and global auto-paste (Direct Dictation) capabilities that let you type with your voice into any application.
 
 ## Key Features
 
