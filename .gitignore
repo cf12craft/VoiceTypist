@@ -1,0 +1,20 @@
+# Python virtual environments
+.venv/
+venv/
+ENV/
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# PyInstaller build directories and specs
+build/
+dist/
+*.spec
+
+# System/IDE files
+.DS_Store
+.vscode/
+.idea/
