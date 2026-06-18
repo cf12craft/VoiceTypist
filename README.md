@@ -5,6 +5,7 @@ Voice Typist is a high-performance, cross-platform, real-time speech-to-text dic
 ## Key Features
 
 - **Real-Time Speech-to-Text**: High-accuracy, low-latency transcription using Google Speech Recognition API with non-blocking worker threads.
+- **Smart Punctuation**: Translates spoken punctuation (like "comma", "question mark", "exclamation point", "colon", "semicolon", "new line", "new paragraph") into symbols and formatting. Features positional intelligence for "period" and "full stop" (converting them to "." only at the end of a sentence, keeping the literal noun word in between phrases). Automatically capitalizes the first word after sentence-ending punctuation.
 - **Direct Dictation**: Automatically inserts finalized transcriptions into the active editor or input field (e.g., Notepad, VS Code, web browsers) by simulating copy-paste shortcuts (using native Windows APIs via ctypes and Linux Xlib).
 - **Focus-Free Floating Overlay**: A compact, draggable pill widget that stays on top of other windows but does not steal focus, keeping your cursor active in the target editor.
 - **Custom Audio Visualizer**: A 60 FPS animated waveform widget that renders voice amplitude changes using smooth mathematical sine waves.
