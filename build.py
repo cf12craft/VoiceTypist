@@ -21,26 +21,7 @@ def build():
         '--clean'
     ]
 
-    # If running on Windows (or Wine environment), dynamically locate and bundle ICU DLLs
-    if platform.system() == "Windows":
-        try:
-            import PyQt6
-            pyqt_dir = os.path.dirname(PyQt6.__file__)
-            qt_bin_dir = os.path.join(pyqt_dir, "Qt6", "bin")
-            print(f"Locating PyQt6 Qt6 bin directory: {qt_bin_dir}")
-            if os.path.exists(qt_bin_dir):
-                icu_dlls_added = 0
-                for f in os.listdir(qt_bin_dir):
-                    if f.lower().startswith("icu") and f.lower().endswith(".dll"):
-                        dll_path = os.path.join(qt_bin_dir, f)
-                        # Bundle the ICU DLLs into PyQt6/Qt6/bin inside the executable
-                        args.append(f'--add-binary={dll_path};PyQt6/Qt6/bin')
-                        icu_dlls_added += 1
-                print(f"Added {icu_dlls_added} ICU DLLs to PyInstaller arguments.")
-            else:
-                print("Warning: PyQt6/Qt6/bin directory not found.")
-        except Exception as e:
-            print(f"Warning: Could not automatically detect and add ICU DLLs: {str(e)}")
+
 
     try:
         import PyInstaller.__main__
