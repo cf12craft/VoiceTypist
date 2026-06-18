@@ -5,7 +5,9 @@ Voice Typist is a high-performance, cross-platform, real-time speech-to-text dic
 ## Key Features
 
 - **Real-Time Speech-to-Text**: High-accuracy, low-latency transcription using Google Speech Recognition API with non-blocking worker threads.
-- **Smart Punctuation**: Translates spoken punctuation (like "comma", "question mark", "exclamation point", "colon", "semicolon", "new line", "new paragraph") into symbols and formatting. Features positional intelligence for "period" and "full stop" (converting them to "." only at the end of a sentence, keeping the literal noun word in between phrases). Automatically capitalizes the first word after sentence-ending punctuation.
+- **Smart Punctuation & Formatting**: Translates spoken punctuation (like "comma", "question mark", "exclamation point", "colon", "semicolon", "new line", "new paragraph") into symbols and formatting. Features positional intelligence for "period" and "full stop" (converting them to "." only at the end of a sentence, keeping the literal noun word in between phrases). Automatically capitalizes the first word after sentence-ending punctuation.
+- **Auto Punctuation (Phrasing Detection)**: Automatically infers and inserts periods or question marks based on sentence structure and phrasing (e.g. Wh-questions or auxiliary verb starters) when you stop speaking, without needing explicit punctuation commands.
+- **Audio File Transcription**: Supports uploading and transcribing audio files (MP3, WAV, M4A, AAC, FLAC, OGG, CAF, etc.) directly into the editor.
 - **Direct Dictation**: Automatically inserts finalized transcriptions into the active editor or input field (e.g., Notepad, VS Code, web browsers) by simulating copy-paste shortcuts (using native Windows APIs via ctypes and Linux Xlib).
 - **Focus-Free Floating Overlay**: A compact, draggable pill widget that stays on top of other windows but does not steal focus, keeping your cursor active in the target editor.
 - **Custom Audio Visualizer**: A 60 FPS animated waveform widget that renders voice amplitude changes using smooth mathematical sine waves.
@@ -13,6 +15,10 @@ Voice Typist is a high-performance, cross-platform, real-time speech-to-text dic
   - **Windows (Primary)**: Captures audio natively using the Sounddevice library.
   - **Linux (Fallback)**: Streams audio from the ALSA arecord CLI if PortAudio system headers are missing.
 - **No Heavy/Unsafe Dependencies**: Bypasses heavy automated libraries (like PyAutoGUI or MouseInfo), resulting in clean imports and no Tkinter/system package warnings.
+
+## Download
+
+Pre-compiled, standalone executables for Windows and Linux are available for download on the [Latest Releases](https://github.com/cf12craft/VoiceTypist/releases/latest) page. You can run these binaries directly on your machine without installing Python or any dependencies.
 
 ## Getting Started
 
