@@ -21,7 +21,12 @@ def build():
         '--clean'
     ]
 
-
+    # Add version info metadata on Windows to reduce antivirus false positives
+    if platform.system() == "Windows":
+        version_file = "file_version_info.txt"
+        if os.path.exists(version_file):
+            print(f"Adding Windows executable version info from {version_file}")
+            args.append(f"--version-file={version_file}")
 
     try:
         import PyInstaller.__main__
