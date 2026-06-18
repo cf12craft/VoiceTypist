@@ -614,7 +614,7 @@ class VoiceTypistApp(QMainWindow):
             return ""
 
         # Match "period" or "full stop" (case-insensitive) at the very end of the text segment (optional dot/spaces)
-        pattern_end_period = re.compile(r'\b(period|full stop)\b\s*\.?$', re.IGNORECASE)
+        pattern_end_period = re.compile(r'\s*\b(period|full stop)\b\s*\.?$', re.IGNORECASE)
         if pattern_end_period.search(text_stripped):
             text_stripped = pattern_end_period.sub('.', text_stripped)
 
