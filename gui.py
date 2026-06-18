@@ -1,7 +1,7 @@
 import sys
 import os
+import re
 import numpy as np
-
 import platform
 
 # Verify display server connection for key simulation
@@ -607,6 +607,44 @@ class VoiceTypistApp(QMainWindow):
         self.transcriber.transcription_chunk.connect(self.handle_transcription)
         self.transcriber.error_occurred.connect(self.show_error)
 
+    # Applies smart punctuation rules to finalized dictation text
+    def format_smart_punctuation(self, text):
+        text_stripped = text.rstrip()
+        if not text_stripped:
+            return ""
+
+        # Match "period" or "full stop" (case-insensitive) at the very end of the text segment (optional dot/spaces)
+        pattern_end_period = re.compile(r'\b(period|full stop)\b\s*\.?$', re.IGNORECASE)
+        if pattern_end_period.search(text_stripped):
+            text_stripped = pattern_end_period.sub('.', text_stripped)
+
+        # Match other punctuation words anywhere in the text
+        replacements = [
+            (re.compile(r'\s*\bcomma\b\s*', re.IGNORECASE), ', '),
+            (re.compile(r'\s*\bquestion mark\b\s*', re.IGNORECASE), '? '),
+            (re.compile(r'\s*\b(exclamation mark|exclamation point)\b\s*', re.IGNORECASE), '! '),
+            (re.compile(r'\s*\bcolon\b\s*', re.IGNORECASE), ': '),
+            (re.compile(r'\s*\bsemicolon\b\s*', re.IGNORECASE), '; '),
+            (re.compile(r'\s*\b(new line|newline)\b\s*', re.IGNORECASE), '\n'),
+            (re.compile(r'\s*\bnew paragraph\b\s*', re.IGNORECASE), '\n\n'),
+        ]
+
+        for pattern, replacement in replacements:
+            text_stripped = pattern.sub(replacement, text_stripped)
+
+        text_stripped = text_stripped.strip()
+
+        # Fix any double spaces
+        text_stripped = re.sub(r' +', ' ', text_stripped)
+
+        # Capitalize the letter after '.', '?', or '!' followed by spaces
+        def capitalize_match(match):
+            return match.group(1) + match.group(2).upper()
+
+        text_stripped = re.compile(r'([.?!]\s+)([a-z])').sub(capitalize_match, text_stripped)
+
+        return text_stripped
+
     # Triggered when a speech chunk is transcribed
     def handle_transcription(self, text, is_final):
         if not text:
@@ -615,18 +653,23 @@ class VoiceTypistApp(QMainWindow):
         if self.direct_dictation:
             # If in Direct Dictation mode, paste the text into whichever app is active
             if is_final:
-                self.paste_text_globally(text)
-                self.interim_box.setText("Sent: " + text)
+                formatted_text = self.format_smart_punctuation(text)
+                suffix = "" if formatted_text.endswith(('\n', '\r')) else " "
+                self.paste_text_globally(formatted_text + suffix)
+                preview_text = formatted_text.replace('\n', ' ')
+                self.interim_box.setText("Sent: " + preview_text)
             else:
                 self.interim_box.setText("Interim: " + text)
         else:
             # Standard editor text insertion
             if is_final:
+                formatted_text = self.format_smart_punctuation(text)
                 # Append finalized text to main editor
                 cursor = self.editor.textCursor()
                 cursor.movePosition(QTextCursor.MoveOperation.End)
                 self.editor.setTextCursor(cursor)
-                self.editor.insertPlainText(text + " ")
+                suffix = "" if formatted_text.endswith(('\n', '\r')) else " "
+                self.editor.insertPlainText(formatted_text + suffix)
                 self.interim_box.setText("Live Preview: (Paused)")
             else:
                 # Update temporary interim display
@@ -635,7 +678,7 @@ class VoiceTypistApp(QMainWindow):
     # Clipboard Inject + Simulated Keystroke to paste text globally into active cursor focus
     def paste_text_globally(self, text):
         # Copy new phrase to standard clipboard
-        QGuiApplication.clipboard().setText(text + " ")
+        QGuiApplication.clipboard().setText(text)
 
         # Perform paste using ctypes (Windows) or X11 fake_input / ydotool (Linux)
         sys_platform = platform.system()
@@ -656,7 +699,7 @@ class VoiceTypistApp(QMainWindow):
             elif sys_platform == "Linux":
                 # Copy to Linux primary selection clipboard (enables instant middle-click paste on Wayland!)
                 from PyQt6.QtGui import QClipboard
-                QGuiApplication.clipboard().setText(text + " ", QClipboard.Mode.Selection)
+                QGuiApplication.clipboard().setText(text, QClipboard.Mode.Selection)
                 
                 # Fallback to X11 fake_input (works on X11 and Xwayland windows)
                 try:
