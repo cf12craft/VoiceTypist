@@ -77,6 +77,17 @@ The application can be compiled into a standalone executable using PyInstaller.
 
 The script will automatically detect your OS, compile the entry point, bundle all assets and dependencies (including required PyQt6 ICU DLLs on Windows), and output the final binary to the `dist/` directory.
 
+## Troubleshooting
+
+### Voice Activity Detection (VAD) Tuning
+
+If the application does not stop transcribing and send your text when you stop speaking, or if it triggers too easily on background noise:
+1. **Remove DC Offset**: The engine automatically centers the microphone signal to eliminate static hum or hardware-level DC bias.
+2. **Adjust VAD Threshold**: 
+   - Move the **Mic Sensitivity (VAD Threshold)** slider to the right (higher value, e.g. 50-100) if the app keeps recording continuously in a noisy room or because of microphone static.
+   - Move the slider to the left (lower value, e.g. 10-20) if the app does not detect your voice at all.
+3. **Adjust Commit Delay**: Set the **Auto-Commit Silence Delay** slider to a lower value (e.g. 0.5s - 1.0s) to reduce the pause time needed for the app to finalize and type your sentence.
+
 ## License
 
 This project is licensed under the MIT License.

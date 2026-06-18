@@ -88,6 +88,9 @@ class AudioRecorder(QThread):
 
             # Compute RMS amplitude normalized to [0.0, 1.0]
             samples = pcm_data.astype(np.float32) / 32768.0
+            
+            # Remove DC offset (zero-center the signal) to prevent silent hum/DC bias from keeping VAD active
+            samples = samples - np.mean(samples)
             rms = np.sqrt(np.mean(samples ** 2))
 
             # Emit volume level to GUI visualizer

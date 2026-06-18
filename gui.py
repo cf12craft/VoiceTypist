@@ -478,9 +478,14 @@ class VoiceTypistApp(QMainWindow):
 
         self.slider_threshold = QSlider(Qt.Orientation.Horizontal, self)
         self.slider_threshold.setObjectName("SettingSlider")
-        self.slider_threshold.setMinimum(5)
-        self.slider_threshold.setMaximum(100)
-        self.slider_threshold.setValue(30)  # 0.03
+        self.slider_threshold.setMinimum(2)   # 0.002
+        self.slider_threshold.setMaximum(250) # 0.250
+        self.slider_threshold.setValue(30)  # 0.030
+        self.slider_threshold.setToolTip(
+            "Adjust the Voice Activity Detection (VAD) threshold:\n"
+            "- Move RIGHT (higher value) if the app does not stop/send (too noisy).\n"
+            "- Move LEFT (lower value) if the app does not detect your voice at all."
+        )
         self.slider_threshold.valueChanged.connect(self.change_threshold)
         right_layout.addWidget(self.slider_threshold)
 
