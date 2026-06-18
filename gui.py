@@ -495,6 +495,13 @@ class VoiceTypistApp(QMainWindow):
             self.check_dictation.setToolTip("Copies to clipboard (Ctrl+V) and selection (Middle-click paste).\nTo enable auto-pasting, run 'xhost +local:' in your terminal.")
         right_layout.addWidget(self.check_dictation)
 
+        # Auto Punctuation Checkbox
+        self.check_auto_punctuation = QCheckBox("Auto Punctuate Sentences", self)
+        self.check_auto_punctuation.setObjectName("SettingCheck")
+        self.check_auto_punctuation.setChecked(True)
+        self.check_auto_punctuation.setToolTip("Automatically appends periods or question marks based on phrasing if not explicitly dictated.")
+        right_layout.addWidget(self.check_auto_punctuation)
+
         right_layout.addStretch()
 
         # Large Record / Stop Button
@@ -754,6 +761,54 @@ class VoiceTypistApp(QMainWindow):
 
         return text_stripped
 
+    # Automatically infers and appends a period or question mark based on phrasing
+    def auto_punctuate(self, text):
+        text_stripped = text.strip()
+        if not text_stripped:
+            return ""
+
+        # If the text already ends with a punctuation mark, do nothing
+        if text_stripped[-1] in ['.', '?', '!', ':', ';', ',', '\n', '\r']:
+            return text_stripped
+
+        # Split text into lowercase words for analysis
+        words = text_stripped.lower().split()
+        if not words:
+            return text_stripped
+
+        first_word = words[0]
+
+        # Wh-question words
+        wh_words = {"who", "what", "where", "when", "why", "how", "which", "whose", "whom"}
+
+        # Auxiliary verbs that almost always start questions
+        unambiguous_aux = {
+            "is", "are", "was", "were", "does", "did", "can", "could", "will", "would", 
+            "should", "shouldn't", "can't", "won't", "couldn't", "wouldn't", 
+            "isn't", "aren't", "wasn't", "weren't", "doesn't", "didn't"
+        }
+
+        # Ambiguous starters (depend on the second word)
+        ambiguous_aux = {"do", "have", "has", "had", "am"}
+        pronouns = {"you", "he", "she", "it", "we", "they", "this", "that", "these", "those", "there"}
+
+        is_question = False
+
+        # Check if first word is a Wh-word
+        if first_word in wh_words:
+            is_question = True
+        elif first_word in unambiguous_aux:
+            is_question = True
+        elif first_word in ambiguous_aux and len(words) > 1:
+            second_word = words[1]
+            if second_word in pronouns:
+                is_question = True
+
+        if is_question:
+            return text_stripped + "?"
+        else:
+            return text_stripped + "."
+
     # Triggered when a speech chunk is transcribed
     def handle_transcription(self, text, is_final):
         if not text:
@@ -763,6 +818,8 @@ class VoiceTypistApp(QMainWindow):
             # If in Direct Dictation mode, paste the text into whichever app is active
             if is_final:
                 formatted_text = self.format_smart_punctuation(text)
+                if self.check_auto_punctuation.isChecked():
+                    formatted_text = self.auto_punctuate(formatted_text)
                 suffix = "" if formatted_text.endswith(('\n', '\r')) else " "
                 self.paste_text_globally(formatted_text + suffix)
                 preview_text = formatted_text.replace('\n', ' ')
@@ -773,6 +830,8 @@ class VoiceTypistApp(QMainWindow):
             # Standard editor text insertion
             if is_final:
                 formatted_text = self.format_smart_punctuation(text)
+                if self.check_auto_punctuation.isChecked():
+                    formatted_text = self.auto_punctuate(formatted_text)
                 # Append finalized text to main editor
                 cursor = self.editor.textCursor()
                 cursor.movePosition(QTextCursor.MoveOperation.End)
