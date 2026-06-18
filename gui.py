@@ -40,34 +40,46 @@ class FileTranscriber(QThread):
 
     def run(self):
         try:
-            import audioread
+            import av
             import wave
             import io
             import speech_recognition as sr
 
             self.progress.emit(10)  # Start decoding
             
-            with audioread.audio_open(self.filepath) as f:
-                channels = f.channels
-                sample_rate = f.samplerate
-                duration = f.duration
-                raw_data = b"".join(f)
+            container = av.open(self.filepath)
+            stream = container.streams.audio[0]
             
-            if not raw_data:
-                self.error_occurred.emit("Error: Audio file is empty or corrupt.")
-                return
-
-            self.progress.emit(30)  # Decoding done
-
-            # Write to in-memory WAV
+            target_rate = 16000
+            resampler = av.AudioResampler(
+                format='s16',
+                layout='mono',
+                rate=target_rate
+            )
+            
+            duration = 0.0
+            if container.duration:
+                duration = float(container.duration) / 1000000.0
+            elif stream.duration and stream.time_base:
+                duration = float(stream.duration * stream.time_base)
+            
+            if duration <= 0.0:
+                duration = 30.0 # Default fallback
+            
             wav_io = io.BytesIO()
             with wave.open(wav_io, 'wb') as wav_file:
-                wav_file.setnchannels(channels)
-                wav_file.setsampwidth(2) # audioread outputs 16-bit PCM (2 bytes)
-                wav_file.setframerate(sample_rate)
-                wav_file.writeframes(raw_data)
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2) # 16-bit
+                wav_file.setframerate(target_rate)
+                
+                for frame in container.decode(stream):
+                    resampled_frames = resampler.resample(frame)
+                    for rf in resampled_frames:
+                        wav_file.writeframes(rf.to_ndarray().tobytes())
+            
             wav_io.seek(0)
-
+            
+            self.progress.emit(30)  # Decoding done
             self.progress.emit(40)
 
             # Transcribe in chunks
