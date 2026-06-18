@@ -759,6 +759,10 @@ class VoiceTypistApp(QMainWindow):
 
         text_stripped = re.compile(r'([.?!]\s+)([a-z])').sub(capitalize_match, text_stripped)
 
+        # Capitalize the very first character of the text segment if it is a letter
+        if text_stripped:
+            text_stripped = text_stripped[0].upper() + text_stripped[1:]
+
         return text_stripped
 
     # Automatically infers and appends a period or question mark based on phrasing

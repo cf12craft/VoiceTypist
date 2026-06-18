@@ -28,6 +28,20 @@ def build():
             print(f"Adding Windows executable version info from {version_file}")
             args.append(f"--version-file={version_file}")
 
+    # Locate speech_recognition package and bundle the correct flac binary
+    try:
+        import speech_recognition
+        sr_dir = os.path.dirname(speech_recognition.__file__)
+        flac_name = "flac-win32.exe" if platform.system() == "Windows" else "flac-linux-x86_64"
+        flac_path = os.path.join(sr_dir, flac_name)
+        if os.path.exists(flac_path):
+            print(f"Bundling flac binary: {flac_path}")
+            args.append(f"--add-binary={flac_path}{os.pathsep}speech_recognition")
+        else:
+            print(f"Warning: FLAC binary not found at {flac_path}")
+    except Exception as e:
+        print(f"Warning: Could not automatically detect and bundle flac binary: {str(e)}")
+
     try:
         import PyInstaller.__main__
         print("Invoking PyInstaller compiler...")
