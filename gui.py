@@ -618,6 +618,15 @@ class VoiceTypistApp(QMainWindow):
         if pattern_end_period.search(text_stripped):
             text_stripped = pattern_end_period.sub('.', text_stripped)
 
+        # Match "period" or "full stop" in the middle of the text, but only if followed by a sentence-starting word
+        # (capitalized word, pronoun, article, demonstrative, etc.)
+        sentence_starters = r'(?:[A-Z][a-zA-Z]*|i|you|he|she|it|we|they|the|a|an|this|that|these|those|there|here|my|your|his|her|its|our|their|who|what|where|when|why|how|then|so|but|and|or|because|although)'
+        pattern_mid_period = re.compile(
+            rf'\s*\b(period|full stop)\b\s+(?={sentence_starters}\b)', 
+            re.IGNORECASE
+        )
+        text_stripped = pattern_mid_period.sub('. ', text_stripped)
+
         # Match other punctuation words anywhere in the text
         replacements = [
             (re.compile(r'\s*\bcomma\b\s*', re.IGNORECASE), ', '),
