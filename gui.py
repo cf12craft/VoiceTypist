@@ -22,11 +22,92 @@ from PyQt6.QtWidgets import (
     QPushButton, QComboBox, QSlider, QLabel, QCheckBox, QFrame,
     QFileDialog, QMessageBox
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QPoint, QSize
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QPoint, QSize, QThread
 from PyQt6.QtGui import (
     QPainter, QColor, QPen, QBrush, QLinearGradient,
     QPainterPath, QFont, QGuiApplication, QTextCursor
 )
+
+class FileTranscriber(QThread):
+    progress = pyqtSignal(int)          # Percentage (0-100)
+    finished = pyqtSignal(str)          # Final concatenated text
+    error_occurred = pyqtSignal(str)    # Error message
+
+    def __init__(self, filepath, language="en-US", parent=None):
+        super().__init__(parent)
+        self.filepath = filepath
+        self.language = language
+
+    def run(self):
+        try:
+            import audioread
+            import wave
+            import io
+            import speech_recognition as sr
+
+            self.progress.emit(10)  # Start decoding
+            
+            with audioread.audio_open(self.filepath) as f:
+                channels = f.channels
+                sample_rate = f.samplerate
+                duration = f.duration
+                raw_data = b"".join(f)
+            
+            if not raw_data:
+                self.error_occurred.emit("Error: Audio file is empty or corrupt.")
+                return
+
+            self.progress.emit(30)  # Decoding done
+
+            # Write to in-memory WAV
+            wav_io = io.BytesIO()
+            with wave.open(wav_io, 'wb') as wav_file:
+                wav_file.setnchannels(channels)
+                wav_file.setsampwidth(2) # audioread outputs 16-bit PCM (2 bytes)
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(raw_data)
+            wav_io.seek(0)
+
+            self.progress.emit(40)
+
+            # Transcribe in chunks
+            recognizer = sr.Recognizer()
+            transcribed_segments = []
+            
+            with sr.AudioFile(wav_io) as source:
+                chunk_size = 20.0
+                total_chunks = max(1, int(duration / chunk_size) + (1 if duration % chunk_size > 0 else 0))
+                current_chunk = 0
+                
+                while True:
+                    try:
+                        audio_chunk = recognizer.record(source, duration=chunk_size)
+                    except EOFError:
+                        break
+                    
+                    if not audio_chunk or len(audio_chunk.frame_data) == 0:
+                        break
+                    
+                    try:
+                        text = recognizer.recognize_google(audio_chunk, language=self.language)
+                        if text:
+                            transcribed_segments.append(text)
+                    except sr.UnknownValueError:
+                        pass
+                    except sr.RequestError as e:
+                        self.error_occurred.emit(f"API Connection Error: {str(e)}")
+                        return
+                    
+                    current_chunk += 1
+                    p = 40 + int((current_chunk / total_chunks) * 55)
+                    self.progress.emit(min(95, p))
+            
+            self.progress.emit(100)
+            final_text = " ".join(transcribed_segments)
+            self.finished.emit(final_text)
+
+        except Exception as e:
+            self.error_occurred.emit(f"Transcription failed: {str(e)}")
 
 # Supported language BCP-47 codes
 LANGUAGES = [
@@ -430,6 +511,12 @@ class VoiceTypistApp(QMainWindow):
         self.btn_overlay.clicked.connect(self.switch_to_overlay)
         right_layout.addWidget(self.btn_overlay)
 
+        # Transcribe Audio File Button
+        self.btn_upload = QPushButton("🎵 Transcribe Audio File", self)
+        self.btn_upload.setObjectName("UploadBtn")
+        self.btn_upload.clicked.connect(self.upload_audio_file)
+        right_layout.addWidget(self.btn_upload)
+
         # Status log label
         self.lbl_info = QLabel("Status: Ready", self)
         self.lbl_info.setObjectName("StatusInfo")
@@ -590,6 +677,19 @@ class VoiceTypistApp(QMainWindow):
                 background-color: #6366f1;
                 color: white;
             }
+
+            QPushButton#UploadBtn {
+                background-color: #0b0f19;
+                border: 1px solid #10b981;
+                border-radius: 8px;
+                color: #10b981;
+                font-weight: bold;
+                padding: 6px;
+            }
+            QPushButton#UploadBtn:hover {
+                background-color: #10b981;
+                color: white;
+            }
         """)
 
     def connect_threads(self):
@@ -730,6 +830,84 @@ class VoiceTypistApp(QMainWindow):
                     pass
         except Exception as e:
             self.show_status(f"Paste failed: {e}")
+
+    def upload_audio_file(self):
+        # Prevent starting if already recording
+        if self.is_recording:
+            QMessageBox.warning(self, "Recording Active", "Please stop voice typing before transcribing an audio file.")
+            return
+            
+        file_filter = "Audio Files (*.mp3 *.wav *.m4a *.mp4 *.aac *.flac *.ogg *.caf *.3gp);;All Files (*)"
+        filepath, _ = QFileDialog.getOpenFileName(
+            self, 
+            "Select Audio File", 
+            "", 
+            file_filter
+        )
+        
+        if not filepath:
+            return
+            
+        # Disable buttons during transcription
+        self.btn_record.setEnabled(False)
+        self.btn_overlay.setEnabled(False)
+        self.btn_upload.setEnabled(False)
+        
+        self.show_status("Transcribing: Loading audio file...")
+        self.interim_box.setText("Transcribing file: " + os.path.basename(filepath))
+        
+        # Start background transcriber
+        self.file_transcriber = FileTranscriber(filepath, language=self.transcriber.language)
+        self.file_transcriber.progress.connect(self.handle_file_progress)
+        self.file_transcriber.finished.connect(self.handle_file_finished)
+        self.file_transcriber.error_occurred.connect(self.handle_file_error)
+        self.file_transcriber.start()
+
+    def handle_file_progress(self, val):
+        self.show_status(f"Transcribing audio file... ({val}%)")
+
+    def handle_file_finished(self, text):
+        # Re-enable UI
+        self.btn_record.setEnabled(True)
+        self.btn_overlay.setEnabled(True)
+        self.btn_upload.setEnabled(True)
+        
+        self.show_status("Status: Ready")
+        
+        if not text.strip():
+            self.interim_box.setText("Transcription completed, but no speech was recognized.")
+            QMessageBox.information(self, "Finished", "No speech could be recognized in the audio file.")
+            return
+            
+        # Apply smart punctuation on the complete text
+        formatted_text = self.format_smart_punctuation(text)
+        
+        # Display the result
+        if self.direct_dictation:
+            # Direct paste
+            suffix = "" if formatted_text.endswith(('\n', '\r')) else " "
+            self.paste_text_globally(formatted_text + suffix)
+            self.interim_box.setText("Sent (File): " + formatted_text.replace('\n', ' '))
+        else:
+            # Insert in editor
+            cursor = self.editor.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            self.editor.setTextCursor(cursor)
+            suffix = "" if formatted_text.endswith(('\n', '\r')) else " "
+            self.editor.insertPlainText(formatted_text + suffix)
+            self.interim_box.setText("Live Preview: (Paused)")
+            
+        QMessageBox.information(self, "Success", "Audio file transcribed successfully!")
+
+    def handle_file_error(self, err_msg):
+        # Re-enable UI
+        self.btn_record.setEnabled(True)
+        self.btn_overlay.setEnabled(True)
+        self.btn_upload.setEnabled(True)
+        
+        self.show_status("Status: Error")
+        self.interim_box.setText("Error: " + err_msg)
+        QMessageBox.critical(self, "Error", err_msg)
 
     def toggle_recording(self):
         if not self.is_recording:
