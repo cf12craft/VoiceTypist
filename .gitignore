@@ -20,3 +20,14 @@ dist/
 .idea/
 # Agents
 .agents/
+
+# User Audio Files
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.mp4
+*.caf
+*.3gp
+*.flac
+*.ogg
